@@ -1,0 +1,105 @@
+﻿using UnityEngine;
+using TMPro;
+using System;
+using UnityEditor;
+public enum CameraAngle
+{
+    menu =0,
+    whiteTeam =1,
+    blackTeam =2
+}
+public class GameUI : MonoBehaviour
+{
+    [SerializeField] private Animator MenuAnimator;
+    [SerializeField] private TMP_InputField addressInput;
+    [SerializeField] private GameObject[] cameraAngles;
+    [SerializeField] private GameObject menu; 
+    [SerializeField] private GameObject HostMenu;
+    public static GameUI Instance { set; get; }
+    public Action<bool> SetLocalGame;
+
+    public Server server;
+    public Client client;
+    void Awake()
+    {
+        Instance = this;
+        RegisterEvents();
+
+    }
+
+    public void ChangeCamera(CameraAngle idx)
+    {
+        for (int i=0; i < cameraAngles.Length; i++)
+        {
+            cameraAngles[i].SetActive(false);
+        }
+        cameraAngles[(int)idx].SetActive(true);
+    }
+    public  void OnLocalGameButtonClick()
+    {
+        MenuAnimator.SetTrigger("inGameMenu");
+        
+        server.Init(8007);
+        client.Init("127.0.0.1", 8007);
+        SetLocalGame?.Invoke(true);
+        menu.SetActive(false);
+        ChangeCamera(CameraAngle.whiteTeam);
+    }
+    public void OnOnlineGameButtonClick()
+    {
+
+        SetLocalGame?.Invoke(false);
+        MenuAnimator.SetTrigger("onlineMenu");
+
+    }
+    public void OnOnlineHostButtonClick()
+    {
+        server.Init(8007);
+        client.Init("127.0.0.1", 8007);
+        MenuAnimator.SetTrigger("hostMenu");
+    }
+    public void OnOnlineConnectButtonClick()
+    {
+        //client.Init(addressInput.text, 8007);
+        HostMenu.transform.GetChild(0).gameObject.SetActive(false);
+        HostMenu.transform.GetChild(1).gameObject.SetActive(true);
+    }
+    public void OnHostPickMenuBackButtonClick()
+    {
+        HostMenu.transform.GetChild(1).gameObject.SetActive(false);
+        HostMenu.transform.GetChild(0).gameObject.SetActive(true);
+    }
+    public void OnOnlineBackButtonClick()
+    {
+        MenuAnimator.SetTrigger("startMenu");
+
+    }
+    public void OnHostBackButtonClick()
+    {
+        server.ShutDown();
+        client.ShutDown();
+        MenuAnimator.SetTrigger("onlineMenu");
+    }
+
+    //listen server
+    private void RegisterEvents()
+    {
+        NetUtility.C_START_GAME += OnStartGameClient;
+    }
+    public void OnLeaveFromGameMenu()
+    {
+        ChangeCamera(CameraAngle.menu);
+        MenuAnimator.SetTrigger("StartMenu");
+
+    }
+
+    private void UnRegisterEvents()
+    {
+        NetUtility.C_START_GAME -= OnStartGameClient;
+    }
+
+    private void OnStartGameClient(NetMessage msg)
+    {
+        MenuAnimator.SetTrigger("inGameMenu");
+    }
+}
